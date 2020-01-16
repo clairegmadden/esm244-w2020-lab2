@@ -1,0 +1,39 @@
+---
+title: "lab2"
+author: "Claire Madden"
+date: "1/16/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(here)
+library(janitor)
+library(naniar)
+library(VIM)
+library(skimr)
+library(ggfortify)
+
+
+```
+
+#1: get some data
+
+```{r}
+ca_pb <- read_csv(here("data", "ca_pollution_burden.csv"))
+
+ca_dem <- read_csv(here("data", "ca_census_demographics_2010.csv"))
+```
+
+#2: some data cleaning & wrangling
+
+```{r}
+ca_pb_nopct <- ca_pb %>%
+  clean_names()
+```
+
+
+
+
