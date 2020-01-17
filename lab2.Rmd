@@ -31,7 +31,158 @@ ca_dem <- read_csv(here("data", "ca_census_demographics_2010.csv"))
 
 ```{r}
 ca_pb_nopct <- ca_pb %>%
+  clean_names() %>% 
+  select(-contains("perc")) %>% 
+  select(-contains("pctl")) %>% 
+  select(-latitude, -longitude)
+```
+
+
+```{r}
+ca_dem_clean <- ca_dem %>%
   clean_names()
+```
+
+#3: pollution burden indicators only
+
+```{r}
+# make a df subset that only contains variables that we would want to include in a PCA
+ca_pb_subset <- ca_pb_nopct %>% 
+  select(ozone:solid_waste, asthma:housing_burden)
+
+
+```
+
+
+#4: do the PCA babay
+use the `prcomp()` function
+
+```{r, eval = FALSE}
+pc_pca <- prcomp(ca_pb_subset, scale = TRUE)
+
+#error tells us that there is missing data - lets explore missingness!
+```
+
+aside: exploring missingness
+
+```{r}
+summary(ca_pb_subset)
+#variable with the most NAs is 242 (relatively low number out of total >8000 observations)
+
+gg_miss_var(ca_pb_subset)
+#show a plot with how many missings (NAs) for each variable
+
+matrixplot(ca_pb_subset, sortby = "poverty")
+#all variables shown on xaxis in column, if NOT NA, darkness of greyscale indicates value (darker is higher), missing values are red, sortby causes that column to be sorted high to low and can be useful to identify correllation possibilities
+
+skim(ca_pb_subset)
+```
+
+remove (complete case deletion) any observation with ANY NA values:
+
+```{r}
+#dropna will remove rows where any column has a missing value
+
+ca_pb_nona <- ca_pb_subset %>% 
+  drop_na()
+
+
+summary(ca_pb_nona)
+
+skim(ca_pb_nona)
+```
+
+now, we have no NA values, cool! we are set to do PCA (there are ways to do PCA with missings if complete case deletion is of concern in the dataset you are working in)
+
+```{r}
+my_ca_pca <- prcomp(ca_pb_nona, scale = TRUE)
+
+my_ca_pca
+
+summary(my_ca_pca)
+#shows the proportion of variance explained by each PC
+
+#biplot(my_ca_pca) 
+#this looks terrible, we can customize to make it look better using autoplot - will try to recognize outputs from other functions and guesses what you want to do with it
+#autoplot works with ggplot so you can use modifiers that we are familiar with from ggploting
+
+my_biplot <- autoplot(my_ca_pca,
+                      colour = NA, #not showing the location of points
+                      loadings.label = TRUE,
+                      loadings.label.size = 3,
+                      loadings.label.colour = "black", 
+                      loadings.label.repel = TRUE)
+
+
+my_biplot
+
+#started with 20+ variables, condensed into two dimensions that account for <34% of variance so we are probably missing a lot
+
+```
+
+#4. PCA for pollution burden + demographics
+First, join together ca_dem_clean with ca_pb_nopct
+Join by census tract - right now the column with census tract in each df are labeled differently
+
+```{r}
+
+# inner join keeps only rows that match in both dfs
+# if you are ever not sure what is in the datasets you are using, use full join to keep everything
+
+ca_df <- ca_dem_clean %>% 
+  inner_join(ca_pb_nopct, by = c("census_tract_number" = "census_tract"))
+
+# now drop NAs by complete case deletion
+
+ca_nona <- ca_df %>%
+  drop_na()
+
+```
+
+Make a subset of ca_nona that only includes:
+
+- white_percent
+- elderly_65_percent
+- pm2_5
+- pesticides
+- traffic
+- asthma
+- cardiovascular_disease
+- poverty
+
+```{r}
+ca_subset <- ca_nona %>% 
+  select(white_percent, 
+         elderly_65_percent, 
+         pm2_5, pesticides, 
+         traffic, 
+         asthma, 
+         cardiovascular_disease, 
+         poverty)
+
+
+```
+
+
+PCA:
+
+```{r}
+my_dem_pca <- prcomp(ca_subset, scale = TRUE)
+
+
+my_dem_biplot <- autoplot(my_dem_pca,
+                      colour = NA, #not showing the location of points
+                      loadings.label = TRUE,
+                      loadings.label.size = 3,
+                      loadings.label.colour = "black", 
+                      loadings.label.repel = TRUE)+
+  scale_y_continuous(limits = c(-0.05, 0.05))+
+  theme_minimal()
+
+my_dem_biplot
+
+#explains over 50% of total variance in the ca_subset df
+
 ```
 
 
